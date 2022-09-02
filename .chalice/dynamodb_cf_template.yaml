@@ -1,0 +1,21 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Resources:
+  schoolAdmission:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: school-admission
+      AttributeDefinitions:
+        - AttributeName: "email"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "email"
+          KeyType: "HASH"
+
+      ProvisionedThroughput:
+        ReadCapacityUnits: "5"
+        WriteCapacityUnits: "5"
+
+Outputs:
+  TableName:
+    Value: !Ref "schoolAdmission"
+    Description: Name of the newly created DynamoDB tabl

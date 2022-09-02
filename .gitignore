@@ -1,3 +1,5 @@
 .chalice/deployments/
 .chalice/venv/
+/venv/
 /env/
+/__pycache__/

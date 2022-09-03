@@ -3,4 +3,3 @@
 /venv/
 /env/
 /__pycache__/
-.chalice/dynamodb_cf_template.yaml

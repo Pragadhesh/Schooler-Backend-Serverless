@@ -1,5 +1,6 @@
 from email.header import Header
 import json
+import re
 from urllib import response
 from chalice import Chalice, Response 
 import boto3
@@ -75,6 +76,16 @@ def create_workflow_instance(token,workflowid,email,name):
     response = requests.post(url, data=payload, headers=headers)
     return response.text
 
+def get_workflow_instance(token,workflow_instance_id):
+    url = "https://api.helloworks.com/v3/workflow_instances/"+workflow_instance_id
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Authorization": "Bearer "+token
+    }
+    response = requests.get(url, headers=headers)
+    return response.text    
+
 @app.route('/student', methods=['POST'])
 def add_student():
     data = app.current_request.json_body
@@ -108,6 +119,68 @@ def add_student():
             }
         )
         response.status_code = 201
+        return response
+    except botocore.exceptions.ClientError as e:
+            response = Response(
+                {
+                   'message': str(e) 
+                }
+            )
+            response.status_code = 400
+            return response
+
+@app.route('/student', methods=['GET'])
+def get_students():
+    try:
+        response = client.scan(
+            TableName='school-admission',
+            AttributesToGet=[
+                    'email',
+                    'fullname',
+                    'workflow_instance_id'
+                        ]
+                    )
+        workflow_instances = response['Items']
+        secret_string =json.loads(get_secret())
+        publickey = secret_string["publickey"]
+        privatekey = secret_string["privatekey"]
+        workflowid = secret_string["workflowid"]
+        token = json.loads(generate_token(publickey,privatekey))["data"]["token"]
+        active = []
+        completed = []
+        for instance in workflow_instances:
+            workflow_instance_id = instance['workflow_instance_id']['S']
+            data = get_workflow_instance(token,workflow_instance_id)
+            result = json.loads(data)
+            if result['data']['status'] == "active":
+                active.append(
+                    {
+                       "workflow_instance_id": workflow_instance_id,
+                        "status": "active",
+                        "fullname": instance['fullname']['S'],
+                        "email": instance['email']['S'],
+                    }
+                )
+            elif result['data']['status'] == "completed":
+                    print("reached here")
+                    firstname = result['data']['data']['form_r9GXB5']['field_0K01Wy']
+                    print(firstname)
+                    completed.append(
+                    {
+                       "workflow_instance_id": workflow_instance_id,
+                        "status": "completed",
+                        "fullname": instance['fullname']['S'],
+                        "email": instance['email']['S'],
+                        "dob": result['data']['data']['form_r9GXB5']['field_emZSLZ'],
+                        "phone": result['data']['data']['form_r9GXB5']['field_p2ukp6'],
+                        "address": result['data']['data']['form_r9GXB5']['field_zHBA5s'].replace('\n',' ')
+                    }
+                )
+        student_information = {
+            'active': active,
+            'completed': completed
+        }
+        print(student_information)
         return response
     except botocore.exceptions.ClientError as e:
             response = Response(

@@ -1,5 +1,6 @@
 from email.header import Header
 import json
+from logging import exception
 import re
 from urllib import response
 from chalice import Chalice, Response 
@@ -85,6 +86,15 @@ def get_workflow_instance(token,workflow_instance_id):
     }
     response = requests.get(url, headers=headers)
     return response.text    
+
+def get_document_link(token,workflow_instance_id):
+    url = "https://api.helloworks.com/v3/workflow_instances/"+workflow_instance_id+"/document_link"
+    headers = {
+        "Accept": "application/json",
+        "Authorization": "Bearer "+token
+    }
+    response = requests.get(url, headers=headers)
+    return response.text
 
 @app.route('/student', methods=['POST'])
 def add_student():
@@ -180,9 +190,27 @@ def get_students():
             'active': active,
             'completed': completed
         }
-        print(student_information)
-        return response
+        return json.dumps(student_information)
     except botocore.exceptions.ClientError as e:
+            response = Response(
+                {
+                   'message': str(e) 
+                }
+            )
+            response.status_code = 400
+            return response
+        
+@app.route('/documents', methods=['GET'])
+def get_documents():
+    data = app.current_request.json_body
+    try:    
+        secret_string =json.loads(get_secret())
+        publickey = secret_string["publickey"]
+        privatekey = secret_string["privatekey"]
+        token = json.loads(generate_token(publickey,privatekey))["data"]["token"]
+        document_link = get_document_link(token,data["workflow_instance_id"])
+        return json.loads(document_link)['data']
+    except exception as e:
             response = Response(
                 {
                    'message': str(e) 

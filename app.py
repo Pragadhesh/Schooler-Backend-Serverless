@@ -87,7 +87,7 @@ def get_workflow_instance(token,workflow_instance_id):
     response = requests.get(url, headers=headers)
     return response.text   
 
-def send_applicant_remainder(token,workflow_instance_id):
+def send_applicant_reminder(token,workflow_instance_id):
     url = "https://api.helloworks.com/v3/workflow_instances/"+workflow_instance_id+"/remind"
     headers = {
         "Accept": "application/json",
@@ -225,8 +225,8 @@ def get_students():
             return response
 
 
-@app.route('/remainder', methods=['PUT'],cors=True)
-def send_remainder():
+@app.route('/reminder',methods=['PUT'],cors=True)
+def send_reminder():
     data = app.current_request.json_body
     try:    
         secret_string =json.loads(get_secret())
@@ -234,7 +234,7 @@ def send_remainder():
         privatekey = secret_string["privatekey"]
         workflow_instance_id = data["workflow_instance_id"]
         token = json.loads(generate_token(publickey,privatekey))["data"]["token"]
-        result = send_applicant_remainder(token,workflow_instance_id)
+        result = send_applicant_reminder(token,workflow_instance_id)
         if result.status_code == 200:
             response = Response(
                 {
@@ -246,25 +246,26 @@ def send_remainder():
         elif json.loads(result.text)["error"] == "Not enough time has gone by":
             response = Response(
                 {
-                   'message': "Applicantion sent recently.Please try again later."
+                   'message': "Application sent recently.Please try again later."
                 }
             )
             response.status_code = 200
             return response
         else:
-            raise Exception("Remaninder not sent")
+            raise Exception("Reminder not sent")
     except:
             response = Response(
                 {
-                   'message': "Issue in sending the remainder"
+                   'message': "Issue in sending the reminder"
                 }
             )
             response.status_code = 400
             return response
         
-@app.route('/student', methods=['DELETE'],cors=True)
+@app.route('/student', methods=['PUT'],cors=True)
 def delete_workflow_instance():
     data = app.current_request.json_body
+    print(data)
     try:    
         secret_string =json.loads(get_secret())
         publickey = secret_string["publickey"]
@@ -272,10 +273,20 @@ def delete_workflow_instance():
         workflow_instance_id = data["workflow_instance_id"]
         token = json.loads(generate_token(publickey,privatekey))["data"]["token"]
         result = delete_student_application(token,workflow_instance_id)
+        print(result)
+        print(result.text)
         if result.status_code == 200:
+            client.delete_item(
+                TableName='school-admission',
+                Key={
+                'email': {
+                    'S': data["email"],
+                }
+                }
+            )
             response = Response(
                 {
-                   'message': "Applicantion deleted successfully"
+                   'message': "Application deleted successfully"
                 }
             )
             response.status_code = 200

@@ -75,7 +75,7 @@ def create_workflow_instance(token,workflowid,email,name):
         "Authorization": "Bearer "+token
     }
     response = requests.post(url, data=payload, headers=headers)
-    return response.text
+    return response
 
 def get_workflow_instance(token,workflow_instance_id):
     url = "https://api.helloworks.com/v3/workflow_instances/"+workflow_instance_id
@@ -85,7 +85,26 @@ def get_workflow_instance(token,workflow_instance_id):
         "Authorization": "Bearer "+token
     }
     response = requests.get(url, headers=headers)
-    return response.text    
+    return response.text   
+
+def send_applicant_remainder(token,workflow_instance_id):
+    url = "https://api.helloworks.com/v3/workflow_instances/"+workflow_instance_id+"/remind"
+    headers = {
+        "Accept": "application/json",
+        "Authorization": "Bearer "+token
+    }
+    response = requests.put(url, headers=headers)
+    return response
+
+
+def delete_student_application(token,workflow_instance_id):
+    url = "https://api.helloworks.com/v3/workflow_instances/"+workflow_instance_id
+    headers = {
+        "Accept": "application/json",
+        "Authorization": "Bearer "+token
+    }
+    response = requests.delete(url, headers=headers)
+    return response
 
 def get_document_link(token,workflow_instance_id):
     url = "https://api.helloworks.com/v3/workflow_instances/"+workflow_instance_id+"/document_link"
@@ -94,9 +113,10 @@ def get_document_link(token,workflow_instance_id):
         "Authorization": "Bearer "+token
     }
     response = requests.get(url, headers=headers)
-    return response.text
+    return response
 
-@app.route('/student', methods=['POST'])
+
+@app.route('/student', methods=['POST'],cors=True)
 def add_student():
     data = app.current_request.json_body
     try:
@@ -105,41 +125,45 @@ def add_student():
         privatekey = secret_string["privatekey"]
         workflowid = secret_string["workflowid"]
         token = json.loads(generate_token(publickey,privatekey))["data"]["token"]
-        workflow_instance_id = json.loads(create_workflow_instance(token,workflowid,data["email"],data["fullname"]))["data"]["id"]
-        client.put_item(
-            TableName='school-admission',
-            Item={
-            'email': {
-                'S': data['email'],
-            },
-            'fullname': {
-                'S': data['fullname'],
-            },
-            'workflow_instance_id': {
-                'S': workflow_instance_id,
-            },
-            },
-            ConditionExpression='attribute_not_exists(email)'
-        )
-        response = Response(
-            {
-            'email': data['email'],
-            'fullname': data['fullname'],
-            'workflow_instance_id': workflow_instance_id
-            }
-        )
-        response.status_code = 201
-        return response
-    except botocore.exceptions.ClientError as e:
+        result = create_workflow_instance(token,workflowid,data["email"],data["fullname"])
+        if result.status_code == 200:
+            workflow_instance_id = json.loads(result.text)["data"]["id"]
+            client.put_item(
+                TableName='school-admission',
+                Item={
+                'email': {
+                    'S': data['email'],
+                },
+                'fullname': {
+                    'S': data['fullname'],
+                },
+                'workflow_instance_id': {
+                    'S': workflow_instance_id,
+                },
+                },
+                ConditionExpression='attribute_not_exists(email)'
+            )
             response = Response(
                 {
-                   'message': str(e) 
+                'email': data['email'],
+                'fullname': data['fullname'],
+                'workflow_instance_id': workflow_instance_id
+                }
+            )
+            response.status_code = 201
+            return response
+        else:
+            raise Exception("Error in creating workflow instance")
+    except:
+            response = Response(
+                {
+                   'message': "Error in creating workflow instance" 
                 }
             )
             response.status_code = 400
             return response
 
-@app.route('/student', methods=['GET'])
+@app.route('/student', methods=['GET'],cors=True)
 def get_students():
     try:
         response = client.scan(
@@ -199,8 +223,76 @@ def get_students():
             )
             response.status_code = 400
             return response
+
+
+@app.route('/remainder', methods=['PUT'],cors=True)
+def send_remainder():
+    data = app.current_request.json_body
+    try:    
+        secret_string =json.loads(get_secret())
+        publickey = secret_string["publickey"]
+        privatekey = secret_string["privatekey"]
+        workflow_instance_id = data["workflow_instance_id"]
+        token = json.loads(generate_token(publickey,privatekey))["data"]["token"]
+        result = send_applicant_remainder(token,workflow_instance_id)
+        if result.status_code == 200:
+            response = Response(
+                {
+                   'message': result.text
+                }
+            )
+            response.status_code = 200
+            return response
+        elif json.loads(result.text)["error"] == "Not enough time has gone by":
+            response = Response(
+                {
+                   'message': "Applicantion sent recently.Please try again later."
+                }
+            )
+            response.status_code = 200
+            return response
+        else:
+            raise Exception("Remaninder not sent")
+    except:
+            response = Response(
+                {
+                   'message': "Issue in sending the remainder"
+                }
+            )
+            response.status_code = 400
+            return response
         
-@app.route('/documents', methods=['GET'])
+@app.route('/student', methods=['DELETE'],cors=True)
+def delete_workflow_instance():
+    data = app.current_request.json_body
+    try:    
+        secret_string =json.loads(get_secret())
+        publickey = secret_string["publickey"]
+        privatekey = secret_string["privatekey"]
+        workflow_instance_id = data["workflow_instance_id"]
+        token = json.loads(generate_token(publickey,privatekey))["data"]["token"]
+        result = delete_student_application(token,workflow_instance_id)
+        if result.status_code == 200:
+            response = Response(
+                {
+                   'message': "Applicantion deleted successfully"
+                }
+            )
+            response.status_code = 200
+            return response
+        else:
+            raise Exception("Issue in deleting the application")
+    except:
+            response = Response(
+                {
+                   'message': "Issue in deleting the application"
+                }
+            )
+            response.status_code = 400
+            return response
+ 
+        
+@app.route('/documents', methods=['GET'],cors=True)
 def get_documents():
     data = app.current_request.json_body
     try:    
@@ -209,12 +301,16 @@ def get_documents():
         privatekey = secret_string["privatekey"]
         token = json.loads(generate_token(publickey,privatekey))["data"]["token"]
         document_link = get_document_link(token,data["workflow_instance_id"])
-        return json.loads(document_link)['data']
-    except exception as e:
+        if document_link.status_code == 200:
+            return json.loads(document_link.text)['data']
+        else:
+            raise Exception("Error in fetching the documents")
+    except:
             response = Response(
                 {
-                   'message': str(e) 
+                   'message': "Error in fetching the documents"
                 }
             )
             response.status_code = 400
             return response
+        

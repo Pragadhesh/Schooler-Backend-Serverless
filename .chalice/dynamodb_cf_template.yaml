@@ -14,7 +14,12 @@ Resources:
       ProvisionedThroughput:
         ReadCapacityUnits: "5"
         WriteCapacityUnits: "5"
-
+  MySecretB:
+    Type: 'AWS::SecretsManager::Secret'
+    Properties:
+      Name: StudentAdmission
+      Description: API Keys of the application
+      SecretString: '{"publickey":"oIiOPtIlH0VTdIDK","privatekey":"y474MjaOZXWCuYVRrO9rAVglKqpSnjqStoEMH4EO","workflowid":"etBovddH7BbztJrC"}'
 Outputs:
   TableName:
     Value: !Ref "schoolAdmission"

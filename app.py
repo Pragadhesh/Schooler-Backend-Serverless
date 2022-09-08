@@ -277,7 +277,7 @@ def get_students():
         workflowid = secret_string["workflowid"]
         token = json.loads(generate_token(publickey,privatekey))["data"]["token"]
         active = []
-        completed = []
+        completed = {}
         for instance in workflow_instances:
             workflow_instance_id = instance['workflow_instance_id']['S']
             data = get_workflow_instance(token,workflow_instance_id)
@@ -292,37 +292,78 @@ def get_students():
                     }
                 )
             elif result['data']['status'] == "completed":
-                    completed.append(
-                    {
-                       "workflow_instance_id": workflow_instance_id,
-                        "status": "completed",
-                        "fullname": instance['fullname']['S'],
-                        "email": instance['email']['S'],
-                        "student_firstname": result['data']['data']['form_r9GXB5']['field_0K01Wy'],
-                        "student_lastname": result['data']['data']['form_r9GXB5']['field_7368pV'],
-                        "student_dob": result['data']['data']['form_r9GXB5']['field_emZSLZ'],
-                        "student_phone": result['data']['data']['form_r9GXB5']['field_p2ukp6'],
-                        "student_address": result['data']['data']['form_r9GXB5']['field_zHBA5s'].replace('\n',' '),
-                        "student_sex": find_student_sex(result['data']['data']['form_r9GXB5']['field_UVdZWk'][0]),
-                        "student_race": find_student_race(result['data']['data']['form_r9GXB5']['field_EsVhlD'][0]),
-                        "student_nationality": result['data']['data']['form_r9GXB5']['field_j3e3QU'],
-                        "student_religion": result['data']['data']['form_r9GXB5']['field_FAdfd2'],
-                        "student_current_grade_level": find_current_grade(result['data']['data']['form_r9GXB5']['field_wrpwlS'][0]),
-                        "student_grade_level_applied": find_applied_grade(result['data']['data']['form_r9GXB5']['field_GQtdyP'][0]),
-                        "parent1_firstname": result['data']['data']['form_r9GXB5']['field_arLmAU'],
-                        "parent1_lastname": result['data']['data']['form_r9GXB5']['field_m2hchx'],
-                        "parent1_relationship": find_parent1_relationship(result['data']['data']['form_r9GXB5']['field_rtu4JU'][0]),
-                        "parent1_phone": result['data']['data']['form_r9GXB5']['field_EMvAFf'],
-                        "parent1_email": result['data']['data']['form_r9GXB5']['field_5oIoGP'],
-                        "parent1_address": result['data']['data']['form_r9GXB5']['field_8eYtwV'].replace('\n',' '),
-                        "parent2_firstname": result['data']['data']['form_r9GXB5']['field_0Mb1X8'],
-                        "parent2_lastname": result['data']['data']['form_r9GXB5']['field_KyKJLx'],
-                        "parent2_relationship": find_parent2_relationship(result['data']['data']['form_r9GXB5']['field_acDFTL'][0]),
-                        "parent2_phone": result['data']['data']['form_r9GXB5']['field_HDvxMm'],
-                        "parent2_email": result['data']['data']['form_r9GXB5']['field_LR4vlx'],
-                        "parent2_address": result['data']['data']['form_r9GXB5']['field_bcWQpe'].replace('\n',' ')
-                    }
-                )
+                    grade = find_applied_grade(result['data']['data']['form_r9GXB5']['field_GQtdyP'][0])
+                    email =  instance['email']['S'] 
+                    if grade in completed:
+                        student_info = completed.get(grade)               
+                        student_info.append(
+                            { email:
+                                    {
+                            "workflow_instance_id": workflow_instance_id,
+                            "status": "completed",
+                            "fullname": instance['fullname']['S'],
+                            "email": instance['email']['S'],
+                            "student_firstname": result['data']['data']['form_r9GXB5']['field_0K01Wy'],
+                            "student_lastname": result['data']['data']['form_r9GXB5']['field_7368pV'],
+                            "student_dob": result['data']['data']['form_r9GXB5']['field_emZSLZ'],
+                            "student_phone": result['data']['data']['form_r9GXB5']['field_p2ukp6'],
+                            "student_address": result['data']['data']['form_r9GXB5']['field_zHBA5s'].replace('\n',' '),
+                            "student_sex": find_student_sex(result['data']['data']['form_r9GXB5']['field_UVdZWk'][0]),
+                            "student_race": find_student_race(result['data']['data']['form_r9GXB5']['field_EsVhlD'][0]),
+                            "student_nationality": result['data']['data']['form_r9GXB5']['field_j3e3QU'],
+                            "student_religion": result['data']['data']['form_r9GXB5']['field_FAdfd2'],
+                            "student_current_grade_level": find_current_grade(result['data']['data']['form_r9GXB5']['field_wrpwlS'][0]),
+                            "student_grade_level_applied": find_applied_grade(result['data']['data']['form_r9GXB5']['field_GQtdyP'][0]),
+                            "parent1_firstname": result['data']['data']['form_r9GXB5']['field_arLmAU'],
+                            "parent1_lastname": result['data']['data']['form_r9GXB5']['field_m2hchx'],
+                            "parent1_relationship": find_parent1_relationship(result['data']['data']['form_r9GXB5']['field_rtu4JU'][0]),
+                            "parent1_phone": result['data']['data']['form_r9GXB5']['field_EMvAFf'],
+                            "parent1_email": result['data']['data']['form_r9GXB5']['field_5oIoGP'],
+                            "parent1_address": result['data']['data']['form_r9GXB5']['field_8eYtwV'].replace('\n',' '),
+                            "parent2_firstname": result['data']['data']['form_r9GXB5']['field_0Mb1X8'],
+                            "parent2_lastname": result['data']['data']['form_r9GXB5']['field_KyKJLx'],
+                            "parent2_relationship": find_parent2_relationship(result['data']['data']['form_r9GXB5']['field_acDFTL'][0]),
+                            "parent2_phone": result['data']['data']['form_r9GXB5']['field_HDvxMm'],
+                            "parent2_email": result['data']['data']['form_r9GXB5']['field_LR4vlx'],
+                            "parent2_address": result['data']['data']['form_r9GXB5']['field_bcWQpe'].replace('\n',' ') 
+                        } 
+                        }  
+                        )      
+                    else:
+                        student_info = [
+                            { email:
+                                    {
+                            "workflow_instance_id": workflow_instance_id,
+                            "status": "completed",
+                            "fullname": instance['fullname']['S'],
+                            "email": instance['email']['S'],
+                            "student_firstname": result['data']['data']['form_r9GXB5']['field_0K01Wy'],
+                            "student_lastname": result['data']['data']['form_r9GXB5']['field_7368pV'],
+                            "student_dob": result['data']['data']['form_r9GXB5']['field_emZSLZ'],
+                            "student_phone": result['data']['data']['form_r9GXB5']['field_p2ukp6'],
+                            "student_address": result['data']['data']['form_r9GXB5']['field_zHBA5s'].replace('\n',' '),
+                            "student_sex": find_student_sex(result['data']['data']['form_r9GXB5']['field_UVdZWk'][0]),
+                            "student_race": find_student_race(result['data']['data']['form_r9GXB5']['field_EsVhlD'][0]),
+                            "student_nationality": result['data']['data']['form_r9GXB5']['field_j3e3QU'],
+                            "student_religion": result['data']['data']['form_r9GXB5']['field_FAdfd2'],
+                            "student_current_grade_level": find_current_grade(result['data']['data']['form_r9GXB5']['field_wrpwlS'][0]),
+                            "student_grade_level_applied": find_applied_grade(result['data']['data']['form_r9GXB5']['field_GQtdyP'][0]),
+                            "parent1_firstname": result['data']['data']['form_r9GXB5']['field_arLmAU'],
+                            "parent1_lastname": result['data']['data']['form_r9GXB5']['field_m2hchx'],
+                            "parent1_relationship": find_parent1_relationship(result['data']['data']['form_r9GXB5']['field_rtu4JU'][0]),
+                            "parent1_phone": result['data']['data']['form_r9GXB5']['field_EMvAFf'],
+                            "parent1_email": result['data']['data']['form_r9GXB5']['field_5oIoGP'],
+                            "parent1_address": result['data']['data']['form_r9GXB5']['field_8eYtwV'].replace('\n',' '),
+                            "parent2_firstname": result['data']['data']['form_r9GXB5']['field_0Mb1X8'],
+                            "parent2_lastname": result['data']['data']['form_r9GXB5']['field_KyKJLx'],
+                            "parent2_relationship": find_parent2_relationship(result['data']['data']['form_r9GXB5']['field_acDFTL'][0]),
+                            "parent2_phone": result['data']['data']['form_r9GXB5']['field_HDvxMm'],
+                            "parent2_email": result['data']['data']['form_r9GXB5']['field_LR4vlx'],
+                            "parent2_address": result['data']['data']['form_r9GXB5']['field_bcWQpe'].replace('\n',' ') 
+                        } 
+                        }  
+                        ]
+                    completed[grade] = student_info              
         student_information = {
             'active': active,
             'completed': completed

@@ -1,6 +1,7 @@
 from email.header import Header
 import json
 from logging import exception
+from logging.handlers import TimedRotatingFileHandler
 import re
 from urllib import response
 from chalice import Chalice, Response 
@@ -98,13 +99,18 @@ def send_applicant_reminder(token,workflow_instance_id):
 
 
 def delete_student_application(token,workflow_instance_id):
+    cancel_url ="https://api.helloworks.com/v3/workflow_instances/"+workflow_instance_id+"/cancel"
     url = "https://api.helloworks.com/v3/workflow_instances/"+workflow_instance_id
     headers = {
         "Accept": "application/json",
         "Authorization": "Bearer "+token
     }
-    response = requests.delete(url, headers=headers)
-    return response
+    cancel_response = requests.put(cancel_url,headers=headers)
+    if cancel_response.status_code == 200:
+        response = requests.delete(url, headers=headers)
+        return response
+    else:
+        return cancel_response
 
 def get_document_link(token,workflow_instance_id):
     url = "https://api.helloworks.com/v3/workflow_instances/"+workflow_instance_id+"/document_link"
@@ -114,6 +120,17 @@ def get_document_link(token,workflow_instance_id):
     }
     response = requests.get(url, headers=headers)
     return response
+
+def find_student_sex(student_sex):
+    return "Male"
+
+def find_student_race(student_race):
+    return "Asian"
+
+def find_applied_grade(grade):
+    return "KinderGarden"
+
+
 
 
 @app.route('/student', methods=['POST'],cors=True)
@@ -205,9 +222,28 @@ def get_students():
                         "status": "completed",
                         "fullname": instance['fullname']['S'],
                         "email": instance['email']['S'],
-                        "dob": result['data']['data']['form_r9GXB5']['field_emZSLZ'],
-                        "phone": result['data']['data']['form_r9GXB5']['field_p2ukp6'],
-                        "address": result['data']['data']['form_r9GXB5']['field_zHBA5s'].replace('\n',' ')
+                        "student_firstname": result['data']['data']['form_r9GXB5']['field_0K01Wy'],
+                        "student_lastname": result['data']['data']['form_r9GXB5']['field_7368pV'],
+                        "student_dob": result['data']['data']['form_r9GXB5']['field_emZSLZ'],
+                        "student_phone": result['data']['data']['form_r9GXB5']['field_p2ukp6'],
+                        "student_address": result['data']['data']['form_r9GXB5']['field_zHBA5s'].replace('\n',' '),
+                        "student_sex": "Male",
+                        "student_race": "Asian",
+                        "student_nationality": result['data']['data']['form_r9GXB5']['field_j3e3QU'],
+                        "student_religion": result['data']['data']['form_r9GXB5']['field_FAdfd2'],
+                        "grade_level_applied_for": "Kindergarden",
+                        "parent1_firstname": result['data']['data']['form_r9GXB5']['field_arLmAU'],
+                        "parent1_lastname": result['data']['data']['form_r9GXB5']['field_m2hchx'],
+                        "parent1_relationship": "Father",
+                        "parent1_phone": result['data']['data']['form_r9GXB5']['field_EMvAFf'],
+                        "parent1_email": result['data']['data']['form_r9GXB5']['field_5oIoGP'],
+                        "parent1_address": result['data']['data']['form_r9GXB5']['field_8eYtwV'].replace('\n',' '),
+                        "parent2_firstname": result['data']['data']['form_r9GXB5']['field_0Mb1X8'],
+                        "parent2_lastname": result['data']['data']['form_r9GXB5']['field_KyKJLx'],
+                        "parent2_relationship": "Father",
+                        "parent2_phone": result['data']['data']['form_r9GXB5']['field_HDvxMm'],
+                        "parent2_email": result['data']['data']['form_r9GXB5']['field_LR4vlx'],
+                        "parent2_address": result['data']['data']['form_r9GXB5']['field_bcWQpe'].replace('\n',' ')
                     }
                 )
         student_information = {
@@ -273,8 +309,6 @@ def delete_workflow_instance():
         workflow_instance_id = data["workflow_instance_id"]
         token = json.loads(generate_token(publickey,privatekey))["data"]["token"]
         result = delete_student_application(token,workflow_instance_id)
-        print(result)
-        print(result.text)
         if result.status_code == 200:
             client.delete_item(
                 TableName='school-admission',
@@ -325,3 +359,13 @@ def get_documents():
             response.status_code = 400
             return response
         
+@app.route('/test',methods=['GET'])
+def get_workflow_instance_details():
+    data = app.current_request.json_body
+    secret_string =json.loads(get_secret())
+    publickey = secret_string["publickey"]
+    privatekey = secret_string["privatekey"]
+    token = json.loads(generate_token(publickey,privatekey))["data"]["token"]
+    resp = get_workflow_instance(token,data["workflow_instance_id"])
+    result = json.loads(resp)
+    return resp

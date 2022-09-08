@@ -122,15 +122,94 @@ def get_document_link(token,workflow_instance_id):
     return response
 
 def find_student_sex(student_sex):
-    return "Male"
+    if student_sex == "choice_7XwZpL":
+        return "Male"
+    else:
+        return "Female"
 
 def find_student_race(student_race):
-    return "Asian"
+    if student_race == "choice_BbFybf":
+        return "Asian"
+    elif student_race == "choice_zyWylc":
+        return "White"
+    elif student_race == "choice_UhAVoy":
+        return "African"
+    elif student_race == "choice_vsTLl7":
+        return "Hispanic"
+    else:
+        return "Pacific Islander"
+ 
+def find_current_grade(grade):
+    if grade == "choice_9SohQh":
+        return "Kinder Garden"
+    elif grade == "choice_csi2Af":
+        return "1st Grade"
+    elif grade == "choice_NQssJW":
+        return "2nd Grade"
+    elif grade == "choice_60JoKY":
+        return "3rd Grade"
+    elif grade == "choice_V8n3DM":
+        return "4th Grade"
+    elif grade == "choice_kJYpaB":
+        return "5th Grade"
+    elif grade == "choice_8cR7Mw":
+        return "6th Grade"
+    elif grade == "choice_DKoVwm":
+        return "7th Grade"
+    elif grade == "choice_I3tsLk":
+        return "8th Grade"
+    elif grade == "choice_gRsFHX":
+        return "9th Grade"
+    elif grade == "choice_EEmLEr":
+        return "10th Grade"
+    elif grade == "choice_2HnXTY":
+        return "11th Grade"
+    else:
+        return "12th Grade"
 
 def find_applied_grade(grade):
-    return "KinderGarden"
-
-
+    if grade == "choice_6vcvRO":
+        return "Kinder Garden"
+    elif grade == "choice_eDsAak":
+        return "1st Grade"
+    elif grade == "choice_4QswBb":
+        return "2nd Grade"  
+    elif grade == "choice_Fhnfky":
+        return "3rd Grade"
+    elif grade == "choice_iP362l":
+        return "4th Grade"
+    elif grade == "choice_TXSHwR":
+        return "5th Grade"
+    elif grade == "choice_1NqUtB":
+        return "6th Grade"
+    elif grade == "choice_DB9jV5":
+        return "7th Grade"
+    elif grade == "choice_aaIm5N":
+        return "8th Grade"
+    elif grade == "choice_tc52RZ":
+        return "9th Grade"
+    elif grade == "choice_gGwTQM":
+        return "10th Grade"
+    elif grade == "choice_mhzyCA":
+        return "11th Grade"
+    else:
+        return "12th Grade"
+    
+def find_parent1_relationship(parent1_relationship):
+    if parent1_relationship == "choice_0A5cqt":
+        return "Father"
+    elif parent1_relationship == "choice_n5OM2W":
+        return "Mother"
+    else:
+        return "Guardian"
+    
+def find_parent2_relationship(parent2_relationship):
+    if parent2_relationship == "choice_GI2xoc":
+        return "Father"
+    elif parent2_relationship == "choice_dCPoOD":
+        return "Mother"
+    else:
+        return "Guardian"
 
 
 @app.route('/student', methods=['POST'],cors=True)
@@ -213,9 +292,6 @@ def get_students():
                     }
                 )
             elif result['data']['status'] == "completed":
-                    print("reached here")
-                    firstname = result['data']['data']['form_r9GXB5']['field_0K01Wy']
-                    print(firstname)
                     completed.append(
                     {
                        "workflow_instance_id": workflow_instance_id,
@@ -227,20 +303,21 @@ def get_students():
                         "student_dob": result['data']['data']['form_r9GXB5']['field_emZSLZ'],
                         "student_phone": result['data']['data']['form_r9GXB5']['field_p2ukp6'],
                         "student_address": result['data']['data']['form_r9GXB5']['field_zHBA5s'].replace('\n',' '),
-                        "student_sex": "Male",
-                        "student_race": "Asian",
+                        "student_sex": find_student_sex(result['data']['data']['form_r9GXB5']['field_UVdZWk'][0]),
+                        "student_race": find_student_race(result['data']['data']['form_r9GXB5']['field_EsVhlD'][0]),
                         "student_nationality": result['data']['data']['form_r9GXB5']['field_j3e3QU'],
                         "student_religion": result['data']['data']['form_r9GXB5']['field_FAdfd2'],
-                        "grade_level_applied_for": "Kindergarden",
+                        "student_current_grade_level": find_current_grade(result['data']['data']['form_r9GXB5']['field_wrpwlS'][0]),
+                        "student_grade_level_applied": find_applied_grade(result['data']['data']['form_r9GXB5']['field_GQtdyP'][0]),
                         "parent1_firstname": result['data']['data']['form_r9GXB5']['field_arLmAU'],
                         "parent1_lastname": result['data']['data']['form_r9GXB5']['field_m2hchx'],
-                        "parent1_relationship": "Father",
+                        "parent1_relationship": find_parent1_relationship(result['data']['data']['form_r9GXB5']['field_rtu4JU'][0]),
                         "parent1_phone": result['data']['data']['form_r9GXB5']['field_EMvAFf'],
                         "parent1_email": result['data']['data']['form_r9GXB5']['field_5oIoGP'],
                         "parent1_address": result['data']['data']['form_r9GXB5']['field_8eYtwV'].replace('\n',' '),
                         "parent2_firstname": result['data']['data']['form_r9GXB5']['field_0Mb1X8'],
                         "parent2_lastname": result['data']['data']['form_r9GXB5']['field_KyKJLx'],
-                        "parent2_relationship": "Father",
+                        "parent2_relationship": find_parent2_relationship(result['data']['data']['form_r9GXB5']['field_acDFTL'][0]),
                         "parent2_phone": result['data']['data']['form_r9GXB5']['field_HDvxMm'],
                         "parent2_email": result['data']['data']['form_r9GXB5']['field_LR4vlx'],
                         "parent2_address": result['data']['data']['form_r9GXB5']['field_bcWQpe'].replace('\n',' ')

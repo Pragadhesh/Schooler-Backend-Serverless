@@ -53,7 +53,6 @@ def get_secret():
             secret = get_secret_value_response['SecretString']
             return secret
         else:
-            print("binary")
             decoded_binary_secret = base64.b64decode(get_secret_value_response['SecretBinary'])
             return decoded_binary_secret
             
@@ -236,6 +235,9 @@ def add_student():
                 'workflow_instance_id': {
                     'S': workflow_instance_id,
                 },
+                'application_status': {
+                    'S': "active"
+                }
                 },
                 ConditionExpression='attribute_not_exists(email)'
             )
@@ -260,115 +262,135 @@ def add_student():
             return response
 
 @app.route('/student', methods=['GET'],cors=True)
-def get_students():
+def get_active_students():
     try:
         response = client.scan(
             TableName='school-admission',
-            AttributesToGet=[
-                    'email',
-                    'fullname',
-                    'workflow_instance_id'
-                        ]
-                    )
+            FilterExpression='application_status = :sts',
+            ExpressionAttributeValues= {
+                        ":sts" : {'S': "active"} 
+            } 
+        )
         workflow_instances = response['Items']
         secret_string =json.loads(get_secret())
         publickey = secret_string["publickey"]
         privatekey = secret_string["privatekey"]
         workflowid = secret_string["workflowid"]
         token = json.loads(generate_token(publickey,privatekey))["data"]["token"]
-        active = []
-        completed = {}
         for instance in workflow_instances:
             workflow_instance_id = instance['workflow_instance_id']['S']
             data = get_workflow_instance(token,workflow_instance_id)
             result = json.loads(data)
-            if result['data']['status'] == "active":
-                active.append(
-                    {
-                       "workflow_instance_id": workflow_instance_id,
-                        "status": "active",
+            if result['data']['status'] == "completed":
+                    client.put_item(
+                            TableName='school-admission',
+                            Item={
+                            'email': {
+                                'S': instance['email']['S'],
+                            },
+                            'fullname': {
+                                'S': instance['fullname']['S'],
+                            },
+                            'workflow_instance_id': {
+                                'S': instance['workflow_instance_id']['S'],
+                            },
+                            'application_status': {
+                                'S': "completed"
+                            },
+                            'student_firstname' : {  
+                                'S': result['data']['data']['form_r9GXB5']['field_0K01Wy'] 
+                            },
+                            'student_lastname' : {  
+                                'S': result['data']['data']['form_r9GXB5']['field_7368pV'] 
+                            },
+                            'student_dob' : {  
+                                'S': result['data']['data']['form_r9GXB5']['field_emZSLZ'] 
+                            },
+                            'student_phone' : {  
+                                'S': result['data']['data']['form_r9GXB5']['field_p2ukp6']
+                            }, 
+                            'student_address' : {  
+                                'S': result['data']['data']['form_r9GXB5']['field_zHBA5s'].replace('\n',' ') 
+                            },
+                            'student_sex' : {  
+                                'S': find_student_sex(result['data']['data']['form_r9GXB5']['field_UVdZWk'][0])
+                            },
+                            'student_race' : {  
+                                'S': find_student_race(result['data']['data']['form_r9GXB5']['field_EsVhlD'][0])
+                            },
+                            'student_nationality' : {  
+                                'S': result['data']['data']['form_r9GXB5']['field_j3e3QU'] 
+                            },
+                            'student_religion' : { 
+                                'S': result['data']['data']['form_r9GXB5']['field_FAdfd2']
+                            },
+                            'student_current_grade_level' : { 
+                                'S': find_current_grade(result['data']['data']['form_r9GXB5']['field_wrpwlS'][0]) 
+                            },
+                            'student_grade_level_applied' : {
+                                'S': find_applied_grade(result['data']['data']['form_r9GXB5']['field_GQtdyP'][0])
+                            },
+                            'parent1_firstname' : { 
+                                'S': result['data']['data']['form_r9GXB5']['field_arLmAU'] 
+                            },
+                            'parent1_lastname' : {
+                                'S': result['data']['data']['form_r9GXB5']['field_m2hchx']
+                            },
+                            'parent1_relationship' : {
+                                'S': find_parent1_relationship(result['data']['data']['form_r9GXB5']['field_rtu4JU'][0])
+                            },
+                            'parent1_phone' : { 
+                                'S': result['data']['data']['form_r9GXB5']['field_EMvAFf'] 
+                            },
+                            'parent1_email' : {
+                                'S': result['data']['data']['form_r9GXB5']['field_5oIoGP'] 
+                            },
+                            'parent1_address' : {
+                                'S': result['data']['data']['form_r9GXB5']['field_8eYtwV'].replace('\n',' ')
+                            },
+                            'parent2_firstname' : {
+                                'S': result['data']['data']['form_r9GXB5']['field_0Mb1X8'] 
+                            },
+                            'parent2_lastname' : { 
+                                'S': result['data']['data']['form_r9GXB5']['field_KyKJLx'] 
+                            },
+                            'parent2_relationship' : {
+                                'S': find_parent2_relationship(result['data']['data']['form_r9GXB5']['field_acDFTL'][0])
+                            },
+                            'parent2_phone' : { 
+                                'S': result['data']['data']['form_r9GXB5']['field_HDvxMm'] 
+                            },
+                            'parent2_email' : {
+                                'S': result['data']['data']['form_r9GXB5']['field_LR4vlx'] 
+                            },
+                            'parent2_address' : {
+                                'S': result['data']['data']['form_r9GXB5']['field_bcWQpe'].replace('\n',' ') 
+                            },
+                            'verified': {
+                                'S': "false"
+                            }
+                            }
+                        )
+        result = client.scan(
+            TableName='school-admission',
+            FilterExpression='application_status = :sts',
+            ExpressionAttributeValues= {
+                        ":sts" : {'S': "active"} 
+            } 
+        )
+        workflow_instances = result['Items']
+        completed_students_info = {}
+        student_info = []
+        for instance in workflow_instances:
+            student_info.append(
+                    { 
+                        "workflow_instance_id": instance['workflow_instance_id']['S'],
                         "fullname": instance['fullname']['S'],
                         "email": instance['email']['S'],
-                    }
-                )
-            elif result['data']['status'] == "completed":
-                    grade = find_applied_grade(result['data']['data']['form_r9GXB5']['field_GQtdyP'][0])
-                    email =  instance['email']['S'] 
-                    if grade in completed:
-                        student_info = completed.get(grade)               
-                        student_info.append(
-                            { email:
-                                    {
-                            "workflow_instance_id": workflow_instance_id,
-                            "status": "completed",
-                            "fullname": instance['fullname']['S'],
-                            "email": instance['email']['S'],
-                            "student_firstname": result['data']['data']['form_r9GXB5']['field_0K01Wy'],
-                            "student_lastname": result['data']['data']['form_r9GXB5']['field_7368pV'],
-                            "student_dob": result['data']['data']['form_r9GXB5']['field_emZSLZ'],
-                            "student_phone": result['data']['data']['form_r9GXB5']['field_p2ukp6'],
-                            "student_address": result['data']['data']['form_r9GXB5']['field_zHBA5s'].replace('\n',' '),
-                            "student_sex": find_student_sex(result['data']['data']['form_r9GXB5']['field_UVdZWk'][0]),
-                            "student_race": find_student_race(result['data']['data']['form_r9GXB5']['field_EsVhlD'][0]),
-                            "student_nationality": result['data']['data']['form_r9GXB5']['field_j3e3QU'],
-                            "student_religion": result['data']['data']['form_r9GXB5']['field_FAdfd2'],
-                            "student_current_grade_level": find_current_grade(result['data']['data']['form_r9GXB5']['field_wrpwlS'][0]),
-                            "student_grade_level_applied": find_applied_grade(result['data']['data']['form_r9GXB5']['field_GQtdyP'][0]),
-                            "parent1_firstname": result['data']['data']['form_r9GXB5']['field_arLmAU'],
-                            "parent1_lastname": result['data']['data']['form_r9GXB5']['field_m2hchx'],
-                            "parent1_relationship": find_parent1_relationship(result['data']['data']['form_r9GXB5']['field_rtu4JU'][0]),
-                            "parent1_phone": result['data']['data']['form_r9GXB5']['field_EMvAFf'],
-                            "parent1_email": result['data']['data']['form_r9GXB5']['field_5oIoGP'],
-                            "parent1_address": result['data']['data']['form_r9GXB5']['field_8eYtwV'].replace('\n',' '),
-                            "parent2_firstname": result['data']['data']['form_r9GXB5']['field_0Mb1X8'],
-                            "parent2_lastname": result['data']['data']['form_r9GXB5']['field_KyKJLx'],
-                            "parent2_relationship": find_parent2_relationship(result['data']['data']['form_r9GXB5']['field_acDFTL'][0]),
-                            "parent2_phone": result['data']['data']['form_r9GXB5']['field_HDvxMm'],
-                            "parent2_email": result['data']['data']['form_r9GXB5']['field_LR4vlx'],
-                            "parent2_address": result['data']['data']['form_r9GXB5']['field_bcWQpe'].replace('\n',' ') 
-                        } 
-                        }  
-                        )      
-                    else:
-                        student_info = [
-                            { email:
-                                    {
-                            "workflow_instance_id": workflow_instance_id,
-                            "status": "completed",
-                            "fullname": instance['fullname']['S'],
-                            "email": instance['email']['S'],
-                            "student_firstname": result['data']['data']['form_r9GXB5']['field_0K01Wy'],
-                            "student_lastname": result['data']['data']['form_r9GXB5']['field_7368pV'],
-                            "student_dob": result['data']['data']['form_r9GXB5']['field_emZSLZ'],
-                            "student_phone": result['data']['data']['form_r9GXB5']['field_p2ukp6'],
-                            "student_address": result['data']['data']['form_r9GXB5']['field_zHBA5s'].replace('\n',' '),
-                            "student_sex": find_student_sex(result['data']['data']['form_r9GXB5']['field_UVdZWk'][0]),
-                            "student_race": find_student_race(result['data']['data']['form_r9GXB5']['field_EsVhlD'][0]),
-                            "student_nationality": result['data']['data']['form_r9GXB5']['field_j3e3QU'],
-                            "student_religion": result['data']['data']['form_r9GXB5']['field_FAdfd2'],
-                            "student_current_grade_level": find_current_grade(result['data']['data']['form_r9GXB5']['field_wrpwlS'][0]),
-                            "student_grade_level_applied": find_applied_grade(result['data']['data']['form_r9GXB5']['field_GQtdyP'][0]),
-                            "parent1_firstname": result['data']['data']['form_r9GXB5']['field_arLmAU'],
-                            "parent1_lastname": result['data']['data']['form_r9GXB5']['field_m2hchx'],
-                            "parent1_relationship": find_parent1_relationship(result['data']['data']['form_r9GXB5']['field_rtu4JU'][0]),
-                            "parent1_phone": result['data']['data']['form_r9GXB5']['field_EMvAFf'],
-                            "parent1_email": result['data']['data']['form_r9GXB5']['field_5oIoGP'],
-                            "parent1_address": result['data']['data']['form_r9GXB5']['field_8eYtwV'].replace('\n',' '),
-                            "parent2_firstname": result['data']['data']['form_r9GXB5']['field_0Mb1X8'],
-                            "parent2_lastname": result['data']['data']['form_r9GXB5']['field_KyKJLx'],
-                            "parent2_relationship": find_parent2_relationship(result['data']['data']['form_r9GXB5']['field_acDFTL'][0]),
-                            "parent2_phone": result['data']['data']['form_r9GXB5']['field_HDvxMm'],
-                            "parent2_email": result['data']['data']['form_r9GXB5']['field_LR4vlx'],
-                            "parent2_address": result['data']['data']['form_r9GXB5']['field_bcWQpe'].replace('\n',' ') 
-                        } 
-                        }  
-                        ]
-                    completed[grade] = student_info              
-        student_information = {
-            'active': active,
-            'completed': completed
-        }
-        return json.dumps(student_information)
+                    } 
+                    )
+        completed_students_info["active"]=student_info
+        return json.dumps(completed_students_info)
     except botocore.exceptions.ClientError as e:
             response = Response(
                 {
@@ -377,7 +399,6 @@ def get_students():
             )
             response.status_code = 400
             return response
-
 
 @app.route('/reminder',methods=['PUT'],cors=True)
 def send_reminder():
@@ -419,7 +440,6 @@ def send_reminder():
 @app.route('/student', methods=['PUT'],cors=True)
 def delete_workflow_instance():
     data = app.current_request.json_body
-    print(data)
     try:    
         secret_string =json.loads(get_secret())
         publickey = secret_string["publickey"]
@@ -487,3 +507,203 @@ def get_workflow_instance_details():
     resp = get_workflow_instance(token,data["workflow_instance_id"])
     result = json.loads(resp)
     return resp
+
+@app.route('/completed', methods=['GET'],cors=True)
+def get_completed_students():
+    try:
+        response = client.scan(
+            TableName='school-admission',
+            FilterExpression='application_status = :sts',
+            ExpressionAttributeValues= {
+                        ":sts" : {'S': "active"} 
+            } 
+        )
+        workflow_instances = response['Items']
+        secret_string =json.loads(get_secret())
+        publickey = secret_string["publickey"]
+        privatekey = secret_string["privatekey"]
+        workflowid = secret_string["workflowid"]
+        token = json.loads(generate_token(publickey,privatekey))["data"]["token"]
+        for instance in workflow_instances:
+            workflow_instance_id = instance['workflow_instance_id']['S']
+            data = get_workflow_instance(token,workflow_instance_id)
+            result = json.loads(data)
+            if result['data']['status'] == "completed":
+                    client.put_item(
+                            TableName='school-admission',
+                            Item={
+                            'email': {
+                                'S': instance['email']['S'],
+                            },
+                            'fullname': {
+                                'S': instance['fullname']['S'],
+                            },
+                            'workflow_instance_id': {
+                                'S': instance['workflow_instance_id']['S'],
+                            },
+                            'application_status': {
+                                'S': "completed"
+                            },
+                            'student_firstname' : {  
+                                'S': result['data']['data']['form_r9GXB5']['field_0K01Wy'] 
+                            },
+                            'student_lastname' : {  
+                                'S': result['data']['data']['form_r9GXB5']['field_7368pV'] 
+                            },
+                            'student_dob' : {  
+                                'S': result['data']['data']['form_r9GXB5']['field_emZSLZ'] 
+                            },
+                            'student_phone' : {  
+                                'S': result['data']['data']['form_r9GXB5']['field_p2ukp6']
+                            }, 
+                            'student_address' : {  
+                                'S': result['data']['data']['form_r9GXB5']['field_zHBA5s'].replace('\n',' ') 
+                            },
+                            'student_sex' : {  
+                                'S': find_student_sex(result['data']['data']['form_r9GXB5']['field_UVdZWk'][0])
+                            },
+                            'student_race' : {  
+                                'S': find_student_race(result['data']['data']['form_r9GXB5']['field_EsVhlD'][0])
+                            },
+                            'student_nationality' : {  
+                                'S': result['data']['data']['form_r9GXB5']['field_j3e3QU'] 
+                            },
+                            'student_religion' : { 
+                                'S': result['data']['data']['form_r9GXB5']['field_FAdfd2']
+                            },
+                            'student_current_grade_level' : { 
+                                'S': find_current_grade(result['data']['data']['form_r9GXB5']['field_wrpwlS'][0]) 
+                            },
+                            'student_grade_level_applied' : {
+                                'S': find_applied_grade(result['data']['data']['form_r9GXB5']['field_GQtdyP'][0])
+                            },
+                            'parent1_firstname' : { 
+                                'S': result['data']['data']['form_r9GXB5']['field_arLmAU'] 
+                            },
+                            'parent1_lastname' : {
+                                'S': result['data']['data']['form_r9GXB5']['field_m2hchx']
+                            },
+                            'parent1_relationship' : {
+                                'S': find_parent1_relationship(result['data']['data']['form_r9GXB5']['field_rtu4JU'][0])
+                            },
+                            'parent1_phone' : { 
+                                'S': result['data']['data']['form_r9GXB5']['field_EMvAFf'] 
+                            },
+                            'parent1_email' : {
+                                'S': result['data']['data']['form_r9GXB5']['field_5oIoGP'] 
+                            },
+                            'parent1_address' : {
+                                'S': result['data']['data']['form_r9GXB5']['field_8eYtwV'].replace('\n',' ')
+                            },
+                            'parent2_firstname' : {
+                                'S': result['data']['data']['form_r9GXB5']['field_0Mb1X8'] 
+                            },
+                            'parent2_lastname' : { 
+                                'S': result['data']['data']['form_r9GXB5']['field_KyKJLx'] 
+                            },
+                            'parent2_relationship' : {
+                                'S': find_parent2_relationship(result['data']['data']['form_r9GXB5']['field_acDFTL'][0])
+                            },
+                            'parent2_phone' : { 
+                                'S': result['data']['data']['form_r9GXB5']['field_HDvxMm'] 
+                            },
+                            'parent2_email' : {
+                                'S': result['data']['data']['form_r9GXB5']['field_LR4vlx'] 
+                            },
+                            'parent2_address' : {
+                                'S': result['data']['data']['form_r9GXB5']['field_bcWQpe'].replace('\n',' ') 
+                            },
+                            'verified': {
+                                'S': "false"
+                            }
+                            }
+                        )
+        result = client.scan(
+            TableName='school-admission',
+            FilterExpression='application_status = :sts',
+            ExpressionAttributeValues= {
+                        ":sts" : {'S': "completed"} 
+            } 
+        )
+        workflow_instances = result['Items']
+        completed_students_info = {}
+        for instance in workflow_instances:
+            grade = instance['student_grade_level_applied']['S']
+            email = instance ['email']['S']
+            if grade in completed_students_info:
+                student_info = completed_students_info.get(grade)  
+                student_info.append(
+                            { 
+                            "workflow_instance_id": instance['workflow_instance_id']['S'],
+                            "application_status": instance['application_status']['S'],
+                            "fullname": instance['fullname']['S'],
+                            "email": instance['email']['S'],
+                            "student_firstname": instance['student_firstname']['S'] ,
+                            "student_lastname": instance['student_lastname']['S'],
+                            "student_dob": instance['student_dob']['S'],
+                            "student_phone": instance['student_phone']['S'],
+                            "student_address": instance['student_address']['S'],
+                            "student_sex": instance['student_sex']['S'],
+                            "student_race": instance['student_race']['S'],
+                            "student_nationality": instance['student_nationality']['S'],
+                            "student_religion": instance['student_religion']['S'],
+                            "student_current_grade_level": instance['student_current_grade_level']['S'],
+                            "parent1_firstname": instance['parent1_firstname']['S'],
+                            "parent1_lastname": instance['parent1_lastname']['S'],
+                            "parent1_relationship": instance['parent1_relationship']['S'],
+                            "parent1_phone": instance['parent1_phone']['S'],
+                            "parent1_email": instance['parent1_email']['S'],
+                            "parent1_address": instance['parent1_address']['S'],
+                            "parent2_firstname": instance['parent2_firstname']['S'],
+                            "parent2_lastname": instance['parent2_lastname']['S'],
+                            "parent2_relationship": instance['parent2_relationship']['S'],
+                            "parent2_phone": instance['parent2_phone']['S'],
+                            "parent2_email": instance['parent2_email']['S'],
+                            "parent2_address": instance['parent2_address']['S'],
+                            "verified": instance['verified']['S']
+                        } 
+                        )
+                completed_students_info[grade]=student_info
+            else:
+                student_info = []  
+                student_info.append(
+                            { 
+                            "workflow_instance_id": instance['workflow_instance_id']['S'],
+                            "application_status": instance['application_status']['S'],
+                            "fullname": instance['fullname']['S'],
+                            "email": instance['email']['S'],
+                            "student_firstname": instance['student_firstname']['S'] ,
+                            "student_lastname": instance['student_lastname']['S'],
+                            "student_dob": instance['student_dob']['S'],
+                            "student_phone": instance['student_phone']['S'],
+                            "student_address": instance['student_address']['S'],
+                            "student_sex": instance['student_sex']['S'],
+                            "student_race": instance['student_race']['S'],
+                            "student_nationality": instance['student_nationality']['S'],
+                            "student_religion": instance['student_religion']['S'],
+                            "student_current_grade_level": instance['student_current_grade_level']['S'],
+                            "parent1_firstname": instance['parent1_firstname']['S'],
+                            "parent1_lastname": instance['parent1_lastname']['S'],
+                            "parent1_relationship": instance['parent1_relationship']['S'],
+                            "parent1_phone": instance['parent1_phone']['S'],
+                            "parent1_email": instance['parent1_email']['S'],
+                            "parent1_address": instance['parent1_address']['S'],
+                            "parent2_firstname": instance['parent2_firstname']['S'],
+                            "parent2_lastname": instance['parent2_lastname']['S'],
+                            "parent2_relationship": instance['parent2_relationship']['S'],
+                            "parent2_phone": instance['parent2_phone']['S'],
+                            "parent2_email": instance['parent2_email']['S'],
+                            "parent2_address": instance['parent2_address']['S'],
+                            "verified": instance['verified']['S']
+                        }  
+                        )
+                completed_students_info[grade]=student_info        
+        return json.dumps(completed_students_info)
+    except botocore.exceptions.ClientError as e:
+            response = Response(
+                {
+                   'message': str(e) 
+                }
+            )
+            response.status_code = 400
+            return response

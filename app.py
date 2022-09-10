@@ -112,7 +112,7 @@ def delete_student_application(token,workflow_instance_id):
         return cancel_response
 
 def get_document_link(token,workflow_instance_id):
-    url = "https://api.helloworks.com/v3/workflow_instances/"+workflow_instance_id+"/document_link"
+    url = "https://api.helloworks.com/v3/workflow_instances/"+workflow_instance_id+"/documents"
     headers = {
         "Accept": "application/json",
         "Authorization": "Bearer "+token
@@ -483,19 +483,9 @@ def get_documents():
         publickey = secret_string["publickey"]
         privatekey = secret_string["privatekey"]
         token = json.loads(generate_token(publickey,privatekey))["data"]["token"]
-        print(token)
         document_link = get_document_link(token,data["workflow_instance_id"])
         if document_link.status_code == 200:
-            dummy_response = requests.get(json.loads(document_link.text)['data'])
-            #print(dummy_response)
-            #print(dummy_response.content)
-            #response = Response(
-            #    {
-            #       'data': json.loads(document_link.text)['data']
-            #    }
-            #)
-            #response.status_code = 200
-            return dummy_response.content
+            return document_link.content
         else:
             raise Exception("Error in fetching the documents")
     except:

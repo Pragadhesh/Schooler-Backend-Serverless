@@ -475,7 +475,7 @@ def delete_workflow_instance():
             return response
  
         
-@app.route('/documents', methods=['GET'],cors=True)
+@app.route('/documents', methods=['POST'],cors=True)
 def get_documents():
     data = app.current_request.json_body
     try:    
@@ -483,9 +483,19 @@ def get_documents():
         publickey = secret_string["publickey"]
         privatekey = secret_string["privatekey"]
         token = json.loads(generate_token(publickey,privatekey))["data"]["token"]
+        print(token)
         document_link = get_document_link(token,data["workflow_instance_id"])
         if document_link.status_code == 200:
-            return json.loads(document_link.text)['data']
+            dummy_response = requests.get(json.loads(document_link.text)['data'])
+            #print(dummy_response)
+            #print(dummy_response.content)
+            #response = Response(
+            #    {
+            #       'data': json.loads(document_link.text)['data']
+            #    }
+            #)
+            #response.status_code = 200
+            return dummy_response.content
         else:
             raise Exception("Error in fetching the documents")
     except:
@@ -497,16 +507,6 @@ def get_documents():
             response.status_code = 400
             return response
         
-@app.route('/test',methods=['GET'])
-def get_workflow_instance_details():
-    data = app.current_request.json_body
-    secret_string =json.loads(get_secret())
-    publickey = secret_string["publickey"]
-    privatekey = secret_string["privatekey"]
-    token = json.loads(generate_token(publickey,privatekey))["data"]["token"]
-    resp = get_workflow_instance(token,data["workflow_instance_id"])
-    result = json.loads(resp)
-    return resp
 
 @app.route('/completed', methods=['GET'],cors=True)
 def get_completed_students():

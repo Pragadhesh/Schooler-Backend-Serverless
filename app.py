@@ -697,3 +697,51 @@ def get_completed_students():
             )
             response.status_code = 400
             return response
+
+@app.route('/verify', methods=['PUT'],cors=True)
+def verify_applicant():
+    print("reached here")
+    data = app.current_request.json_body
+    print(data)
+    verified = data["verified"]
+    email = data["email"]
+    try:    
+        result = client.update_item(
+                TableName='school-admission',
+                Key={
+                    "email": {
+                        'S': email
+                    }
+                },
+                UpdateExpression="set verified = :r",
+                ExpressionAttributeValues={
+                ':r': {
+                    'S': verified
+                }
+                },
+                ConditionExpression='attribute_exists(email)'
+            )
+        if verified == "true":
+            response = Response(
+                {
+                   'message': "Applicant Verified Succesfully"
+                }
+            ) 
+            response.status_code = 200
+            return response
+        else:
+            response = Response(
+                {
+                   'message': "Applicant Verification Cancelled Succesfully"
+                }
+            ) 
+            response.status_code = 200
+            return response
+    except Exception as e:
+            response = Response(
+                {
+                   'message': "Error in Verifying the applicant"
+                }
+            )
+            response.status_code = 400
+            return response

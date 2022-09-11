@@ -700,9 +700,7 @@ def get_completed_students():
 
 @app.route('/verify', methods=['PUT'],cors=True)
 def verify_applicant():
-    print("reached here")
     data = app.current_request.json_body
-    print(data)
     verified = data["verified"]
     email = data["email"]
     try:    

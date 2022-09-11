@@ -10,6 +10,7 @@ import botocore
 import requests
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
+from hellosign_sdk import HSClient
 
 app = Chalice(app_name='school-admission')
 client = boto3.client('dynamodb')
@@ -743,3 +744,58 @@ def verify_applicant():
             )
             response.status_code = 400
             return response
+
+@app.route('/sendreport', methods=['POST'],cors=True)        
+def send_score_report():
+        secret_string =json.loads(get_secret())
+        apikey = secret_string["hellosignapikey"]
+        templateid = secret_string["templateid"]
+        client = HSClient(api_key=apikey)
+        signers = [
+            {"name": "Parent", "email_address": "pragadhesh14@gmail.com","role_name": "Parent"}
+        ]
+        ccs = [
+            { "email_address": "pragadhesh14@gmail.com", "role_name": "Student" },
+            { "email_address": "pragadhesh14@gmail.com", "role_name": "Admin" }
+        ]
+        custom_fields = [
+                { "Student Grade": "12th Grade" },
+                { "Maths Score": "90" },
+                { "Maths Result": "PASS" },
+                { "Science Score": "90" },
+                { "Science Result": "PASS" },
+                { "Social Score": "90" },
+                { "Social Result": "PASS" },
+                { "Tamil Score": "90" },
+                { "Tamil Result": "PASS" },
+                { "English Score": "90" },
+                { "English Result": "PASS" },
+                { "Total Score": "400/500" }
+        ]
+        try:
+            signature_request = client.send_signature_request_with_template(
+                                        test_mode=True,
+                                        template_id=templateid,
+                                        title="Student Score Report",
+                                        subject="Student Score Report",
+                                        message="Please sign the score report",
+                                        signing_redirect_url=None,
+                                        signers=signers,
+                                        ccs=ccs,
+                                        custom_fields=custom_fields)
+            response = Response(
+                {
+                   'message': "Report Sent Successfully"
+                }
+            ) 
+            response.status_code = 200
+            return response
+        except Exception as e:
+            response = Response(
+                {
+                   'message': "Error in Sending the signature Request"
+                }
+            )
+            response.status_code = 400
+            return response
+            

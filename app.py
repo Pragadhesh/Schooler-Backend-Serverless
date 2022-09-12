@@ -744,6 +744,100 @@ def verify_applicant():
             )
             response.status_code = 400
             return response
+        
+        
+@app.route('/verifiedapplicants', methods=['GET'],cors=True)        
+def get_verified_applicants():
+    try:
+        result = client.scan(
+            TableName='school-admission',
+            FilterExpression='verified = :sts',
+            ExpressionAttributeValues= {
+                        ":sts" : {'S': "true"} 
+            } 
+        )
+        workflow_instances = result['Items']
+        completed_students_info = {}
+        for instance in workflow_instances:
+            grade = instance['student_grade_level_applied']['S']
+            if grade in completed_students_info:
+                student_info = completed_students_info.get(grade)  
+                student_info.append(
+                            { 
+                            "workflow_instance_id": instance['workflow_instance_id']['S'],
+                            "application_status": instance['application_status']['S'],
+                            "fullname": instance['fullname']['S'],
+                            "email": instance['email']['S'],
+                            "student_firstname": instance['student_firstname']['S'] ,
+                            "student_lastname": instance['student_lastname']['S'],
+                            "student_dob": instance['student_dob']['S'],
+                            "student_phone": instance['student_phone']['S'],
+                            "student_address": instance['student_address']['S'],
+                            "student_sex": instance['student_sex']['S'],
+                            "student_race": instance['student_race']['S'],
+                            "student_nationality": instance['student_nationality']['S'],
+                            "student_religion": instance['student_religion']['S'],
+                            "student_current_grade_level": instance['student_current_grade_level']['S'],
+                            "parent1_firstname": instance['parent1_firstname']['S'],
+                            "parent1_lastname": instance['parent1_lastname']['S'],
+                            "parent1_relationship": instance['parent1_relationship']['S'],
+                            "parent1_phone": instance['parent1_phone']['S'],
+                            "parent1_email": instance['parent1_email']['S'],
+                            "parent1_address": instance['parent1_address']['S'],
+                            "parent2_firstname": instance['parent2_firstname']['S'],
+                            "parent2_lastname": instance['parent2_lastname']['S'],
+                            "parent2_relationship": instance['parent2_relationship']['S'],
+                            "parent2_phone": instance['parent2_phone']['S'],
+                            "parent2_email": instance['parent2_email']['S'],
+                            "parent2_address": instance['parent2_address']['S'],
+                            "verified": instance['verified']['S']
+                        } 
+                        )
+                completed_students_info[grade]=student_info
+            else:
+                student_info = []  
+                student_info.append(
+                            { 
+                            "workflow_instance_id": instance['workflow_instance_id']['S'],
+                            "application_status": instance['application_status']['S'],
+                            "fullname": instance['fullname']['S'],
+                            "email": instance['email']['S'],
+                            "student_firstname": instance['student_firstname']['S'] ,
+                            "student_lastname": instance['student_lastname']['S'],
+                            "student_dob": instance['student_dob']['S'],
+                            "student_phone": instance['student_phone']['S'],
+                            "student_address": instance['student_address']['S'],
+                            "student_sex": instance['student_sex']['S'],
+                            "student_race": instance['student_race']['S'],
+                            "student_nationality": instance['student_nationality']['S'],
+                            "student_religion": instance['student_religion']['S'],
+                            "student_current_grade_level": instance['student_current_grade_level']['S'],
+                            "parent1_firstname": instance['parent1_firstname']['S'],
+                            "parent1_lastname": instance['parent1_lastname']['S'],
+                            "parent1_relationship": instance['parent1_relationship']['S'],
+                            "parent1_phone": instance['parent1_phone']['S'],
+                            "parent1_email": instance['parent1_email']['S'],
+                            "parent1_address": instance['parent1_address']['S'],
+                            "parent2_firstname": instance['parent2_firstname']['S'],
+                            "parent2_lastname": instance['parent2_lastname']['S'],
+                            "parent2_relationship": instance['parent2_relationship']['S'],
+                            "parent2_phone": instance['parent2_phone']['S'],
+                            "parent2_email": instance['parent2_email']['S'],
+                            "parent2_address": instance['parent2_address']['S'],
+                            "verified": instance['verified']['S']
+                        }  
+                        )
+                completed_students_info[grade]=student_info        
+        return json.dumps(completed_students_info)
+    except Exception as e:
+            response = Response(
+                {
+                   'message': "Error in fetching the verified applicants"
+                }
+            )
+            response.status_code = 400
+            return response
+    
 
 @app.route('/sendreport', methods=['POST'],cors=True)        
 def send_score_report():

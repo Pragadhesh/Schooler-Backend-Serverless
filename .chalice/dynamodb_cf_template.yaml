@@ -19,7 +19,7 @@ Resources:
     Properties:
       Name: StudentAdmission
       Description: API Keys of the application
-      SecretString: '{"publickey":"oIiOPtIlH0VTdIDK","privatekey":"y474MjaOZXWCuYVRrO9rAVglKqpSnjqStoEMH4EO","workflowid":"etBovddH7BbztJrC","hellosignapikey":"f8956e832d54ca112042bb5f7f6db039b439258c3ffdd5324886379f8673c88a","templateid":"98ca1996af7f995af5d09a7c15b6e4c1101946ac"}'
+      SecretString: '{"publickey":"publickey","privatekey":"privatekey","workflowid":"workflowid","hellosignapikey":"hellosignapikey","templateid":"templateid"}'
 Outputs:
   TableName:
     Value: !Ref "schoolAdmission"

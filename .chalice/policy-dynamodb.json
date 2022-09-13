@@ -21,6 +21,11 @@
         ],
         "Resource": ["arn:aws:dynamodb:*:*:table/school-admission"],
         "Effect": "Allow"
+      },
+      {
+        "Action": "secretsmanager:GetSecretValue",
+        "Resource": "*",
+        "Effect": "Allow"
       }
     ]
   }
